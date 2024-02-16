@@ -257,5 +257,5 @@ def check_params(params_list, size_c):
                 f'For {key}, please list either 1 value to apply to all channels' \
                 f' or 1 value for each channel ({size_c} total)'
             params[key] = value
-    return params_list
+    return params_li
 
