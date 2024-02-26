@@ -247,7 +247,7 @@ def batch_align_2imgs(aligndir, img1_ch_align=0, img2_ch_align=0, img1_ch_subset
         if error_csv_path.is_file():
             error_df = pd.read_csv(error_csv_path)
         else:
-            error_df = pd.DataFrame()
+            error_df = pd.DataFrame({'image name': [], 'error time': []})
 
     else:
         aligned_dirpath.mkdir(parents=True, exist_ok=True)
@@ -279,18 +279,6 @@ def batch_align_2imgs(aligndir, img1_ch_align=0, img2_ch_align=0, img1_ch_subset
     for i, row in (align_df.loc[start_idx:]).iterrows():
         imgpath1 = Path(dir1_raw_dirpath) / row['Image Name_x']
         imgpath2 = Path(dir2_raw_dirpath) / row['Image Name_y']
-        # try:
-        #     single_align_df = align_2imgs(str(imgpath1), str(imgpath2), aligned_dirpath,
-        #                                   img1_ch_align, img2_ch_align, img1_ch_subset, img2_ch_subset)
-        #     align_df.at[i]['t0'] = single_align_df.loc[0]['t0']
-        #     align_df.at[i]['t1'] = single_align_df.loc[0]['t1']
-        # except:
-        #     print(f'Unable to align image {imgpath1.name}. Skipping for now.')
-        #     errors.append(imgpath1.name)
-        #     errtime.append(datetime.now().strftime("%Y%m%d-%I%M%p"))
-        #     error_df_new['image name'] = errors
-        #     error_df_new['error time'] = errtime
-        #     error_df = pd.concat([error_df, error_df_new])
 
         single_align_df = align_2imgs(str(imgpath1), str(imgpath2), aligned_dirpath,
                                       img1_ch_align, img2_ch_align, img1_ch_subset, img2_ch_subset)
@@ -299,8 +287,7 @@ def batch_align_2imgs(aligndir, img1_ch_align=0, img2_ch_align=0, img1_ch_subset
 
         # Saves alignment info
         align_df.to_csv(aligned_csv_path, index=False)
-        if not error_df.empty():
-            error_df.to_csv(error_csv_path, index=False)
+        error_df.to_csv(error_csv_path, index=False)
 
     # Move original, unaligned images to a new folder
     unaligned_parent_dirpath = multiexp_dirpath / orig_unaligned_dirname
