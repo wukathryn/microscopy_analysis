@@ -53,9 +53,14 @@ def apply_mask_files(input_dirpath, mask_subdirname, add_cellmask=False, cell_ch
 
     for imgpath in imgpaths:
 
+        #TODO: delete
+        idx = imgpath.name.index('aligned') + len('aligned')
+        basename = imgpath.name[:idx]
+
         # Identifies masks that share the same name as the image
-        basename = imgpath.name.split('.ome.tif')[0]
+        #basename = imgpath.name.split('.ome.tif')[0]
         maskpaths = [path for path in Path(masks_dirpath).glob(f'*{basename}*')]
+
         print(f"{len(maskpaths)} mask file(s) found for {basename}")
 
         if len(maskpaths) > 0:

@@ -1,8 +1,6 @@
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from aicsimageio import AICSImage
-from aicsimageio.readers.ome_tiff_reader import OmeTiffReader
 from aicsimageio.writers import OmeTiffWriter
 from src.d00_utils.dirnames import proc_dirname
 
@@ -31,8 +29,9 @@ def extract_img_info(imgname):
                             'Tx': [tx],
                             'Scene': [scene],
                             'ROI': [roi],
-                            'UID': [scene + '_' + roi]})
-
+                            'UID': [scene + '_' + str(roi)]})
+    # Only include columns with non-nan values
+    info_df.dropna(axis=1)
     return info_df
 
 
@@ -41,7 +40,7 @@ def search_name(name_elems, searchphrase):
     if np.any(search_res!=-1):
         info = name_elems[np.where(search_res != -1)][0]
     else:
-        info = 'NA'
+        info = np.nan
     return info
 
 

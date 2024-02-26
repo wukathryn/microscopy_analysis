@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 import numpy as np
 from aicsimageio import AICSImage
@@ -9,10 +8,10 @@ from scipy.ndimage import gaussian_filter
 import pandas as pd
 from src.d00_utils.dirnames import bg_sub_dirname, bg_sub_fig_dirname
 from src.d00_utils.utilities import construct_ome_metadata
-import matplotlib.pyplot as plt
-import src.d00_utils.utilities as utils
 from . import vis_and_rescale
 from datetime import datetime
+#for testing
+import matplotlib.pyplot as plt
 
 def crop_black_borders(img):
     '''
@@ -73,10 +72,10 @@ def subtract_background(img, otsu_thresholds):
     return img_bg_subtract.astype('uint16')
 
 
-def rescale_to_fit_dtype_range(img, dtype):
-    scaling_factor = np.iinfo(dtype).max / np.amax(img, axis=(0, 2, 3, 4), keepdims=True)
-    img_rescaled = (img * scaling_factor).astype(dtype)
-    return img_rescaled
+# def rescale_to_fit_dtype_range(img, dtype):
+#     scaling_factor = np.iinfo(dtype).max / np.amax(img, axis=(0, 2, 3, 4), keepdims=True)
+#     img_rescaled = (img * scaling_factor).astype(dtype)
+#     return img_rescaled
 
 
 def subtract_bg(imgpath, params_list, bs_thresh_d, ch_to_process=None, index=None,
@@ -118,8 +117,11 @@ def subtract_bg(imgpath, params_list, bs_thresh_d, ch_to_process=None, index=Non
         else:
             img_chsubset = np.concatenate((img_chsubset, orig_img[:, ch, np.newaxis, :, :, :]), axis=1)
 
+    #img_chsubset, _ = vis_and_rescale.rescale_img(img_chsubset, target_perc_grayval=target_perc_grayval, conv_to_8bit=False)
+
     # Preprocess image for OTSU thresholding by cropping black borders
-    img_preprocessed = crop_black_borders(img_chsubset)
+    img_cropped = crop_black_borders(img_chsubset)
+
 
     # Apply processing parameters
     for p, params in enumerate(params_list):
@@ -127,7 +129,7 @@ def subtract_bg(imgpath, params_list, bs_thresh_d, ch_to_process=None, index=Non
         sigmas_smoothing = params['sigmas_smoothing']
 
         # Continue to reprocess image for OTSU thresholding via clipping and smoothing
-        img_preprocessed = clip_upper_outliers(img_preprocessed, outlier_percentiles)
+        img_preprocessed = clip_upper_outliers(img_cropped, outlier_percentiles)
         for ch in range(img_preprocessed.shape[1]):
             img_preprocessed[:, ch, :, :, :] = gaussian_filter(img_preprocessed[:, ch, :, :, :], (0, 0, sigmas_smoothing[ch], sigmas_smoothing[ch]))
 
@@ -135,18 +137,19 @@ def subtract_bg(imgpath, params_list, bs_thresh_d, ch_to_process=None, index=Non
         otsu_thresholds = get_otsu_thresholds(img_preprocessed)
 
         # Smooth the original image and subtract the background thresholds
-        bg_sb_chsubset = img_chsubset
+        bg_sb_chsubset = img_chsubset.copy()
         for ch in range(bg_sb_chsubset.shape[0]):
             bg_sb_chsubset[:, ch, :, :, :] = gaussian_filter(bg_sb_chsubset[:, ch, :, :, :], (0, 0, sigmas_smoothing[ch], sigmas_smoothing[ch]))
         bg_sb_chsubset = subtract_background(bg_sb_chsubset, otsu_thresholds)
 
         # Save background subtracted image
-        bg_sb_img = orig_img
-        for i, c in enumerate(ch_to_process):
-            bg_sb_img[:, c, :, :, :] = bg_sb_chsubset[:, i, :, :, :]
+        bg_sb_img = orig_img.copy()
+        for i, ch in enumerate(ch_to_process):
+            bg_sb_img[:, ch, :, :, :] = bg_sb_chsubset[:, i, :, :, :]
         bgsub_imgname = f'{basename}_{bgsub_time}_p{p}'
         bs_ome_metadata = construct_ome_metadata(bg_sb_img, img_file.physical_pixel_sizes)
         OmeTiffWriter.save(bg_sb_img, bg_sub_dirpath / (bgsub_imgname + '.ome.tif'), ome_xml=bs_ome_metadata)
+
         fig = vis_and_rescale.generate_subtractbg_fig(img_chsubset, bg_sb_chsubset, bgsub_imgname, params,
                                                       target_perc_grayval=target_perc_grayval,
                                                       index=index)
@@ -200,7 +203,7 @@ def batch_subtract_bg(input_dirpath, params_list, ch_to_process, subset=None, ta
     # Get the list of ome-tiff images to process
     imgpaths = [path for path in input_dirpath.glob('*.ome.tif')]
     imgpaths.sort()
-    if subset == None:
+    if subset is None:
         subset = list(np.arange(len(imgpaths)))
     else:
         imgpaths = [imgpaths[i] for i in subset]
@@ -281,4 +284,3 @@ def check_params(params_list, size_c):
                 f' or 1 value for each channel ({size_c} total)'
             params[key] = value
     return params_list
-

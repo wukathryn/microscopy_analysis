@@ -1,35 +1,27 @@
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import pandas as pd
 from aicsimageio import AICSImage
 from aicsimageio.readers.ome_tiff_reader import OmeTiffReader
 from aicsimageio.writers import OmeTiffWriter
 from src.d00_utils.dirnames import bg_sub_dirname, bg_sub_fig_dirname, init_rescale_dirname
 
-#TODO: maybe move to utilities?
-def get_img_and_metadata(imgpath):
-    img_file = AICSImage(imgpath, reader=OmeTiffReader)
-    img = img_file.data
-    img = img.astype('uint16')
+dpi = 100
 
-    metadata_d = {}
-    metadata_d['ome_metadata'] = img_file.ome_metadata
-    metadata_d['channel_names'] = img_file.channel_names
-    metadata_d['physical_pixel_sizes'] = img_file.physical_pixel_sizes
-
-    return img, metadata_d
-
-
-# Obtain scaling factor for each image based on target percent grayvalue for the 99th percentile pixel
-def get_scaling_fact(img, target_perc_grayval, percentile=70):
+# Obtain scaling factor for each image based on target percent grayvalue for the 68th percentile pixel
+def get_scaling_fact(img, target_perc_grayval, percentile=68):
+    # Calculate the target grayvalue for the image type
     target_grayval = (target_perc_grayval / 100) * np.iinfo(img.dtype).max
+
+    # Calculate scaling factor
     img = img.astype('float')
     img[img == 0] = 'nan'
-    bg_sub_percentile = np.nanpercentile(img, q=percentile, axis=(0, 2, 3, 4))
-
-    scaling_fact = target_grayval / bg_sub_percentile
+    orig_grayvals = np.nanpercentile(img, q=percentile, axis=(0, 2, 3, 4))
+    scaling_fact = target_grayval / orig_grayvals
     scaling_fact = np.expand_dims(scaling_fact, axis=(0, 2, 3, 4))
+
     return scaling_fact
 
 
@@ -52,7 +44,7 @@ def convert_to_8bit(img):
 
 def rescale_img(img, target_perc_grayval=30,
                 standardize_scaling=False, scaling_fact=None, conv_to_8bit=True):
-    if (standardize_scaling is False or scaling_fact is None):
+    if standardize_scaling is False or scaling_fact is None:
         scaling_fact = get_scaling_fact(img, target_perc_grayval)
     img_vis = multiply_by_scaling_fact(img, scaling_fact)
     if conv_to_8bit is True:
@@ -83,7 +75,6 @@ def generate_subtractbg_fig(orig_img, bgsb_img, bgsub_imgname, params, target_pe
         axs_img = subfigs_imgtype[0].subplots(size_t, squeeze=False)
         axs_binary = subfigs_imgtype[1].subplots(size_t, squeeze=False)
 
-
         for t in range(size_t):
             axs_img[t, 0].imshow(rescaled_orig_img[t, c, 0, :, :], cmap='gray', interpolation=None)
             axs_img[t, 0].axis('off')
@@ -97,7 +88,48 @@ def generate_subtractbg_fig(orig_img, bgsb_img, bgsub_imgname, params, target_pe
 
     return fig
 
-def batch_rescale_imgs(input_dirpath):
+def generate_vis_fig(orig_img, imgname, target_perc_grayval=30, index=0):
+    size_t, size_c, _, _, _ = orig_img.shape
+
+    rescaled_orig_img, scaling_fact = rescale_img(orig_img, target_perc_grayval=target_perc_grayval,
+                                                  standardize_scaling=False, conv_to_8bit=True)
+
+    fig, ax = plt.subplots(size_t, size_c, figsize=(4 * size_c, 4 * size_t), squeeze=False, constrained_layout=True)
+    plt.rcParams.update({'font.size': 11})
+
+    for ch in range(size_c):
+        for t in range(size_t):
+            ax[t, ch].imshow(rescaled_orig_img[t, ch, 0, :, :], cmap='gray', interpolation=None)
+            ax[t, ch].axis('off')
+            ax[t, ch].set_title(f'Ch{ch}, Tp{t}')
+
+    fig.suptitle(f'Idx: {index}, {imgname}')
+    plt.show()
+
+    return fig
+
+def display_fig(img):
+    height, width, depth = img.shape
+    figsize = width / float(dpi), height / float(dpi)
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.axis('off')
+    ax.imshow(img, cmap='gray')
+    plt.show()
+
+def show_figs(fig_dirpath, selection_phrase=None):
+    if selection_phrase is None:
+        imgpaths = [imgpath for imgpath in fig_dirpath.glob('*.png')]
+    else:
+        imgpaths = [imgpath for imgpath in fig_dirpath.glob(f'*{selection_phrase}*.png')]
+    imgpaths.sort()
+    print(f'{len(imgpaths)} images found')
+
+    for imgpath in imgpaths:
+        img = mpimg.imread(imgpath)
+        display_fig(img)
+
+def batch_rescale_imgs(input_dirpath, target_perc_grayval=30):
     input_dirpath = Path(input_dirpath)
     assert input_dirpath.exists(), "Please input a valid directory path"
     vis_dirpath = input_dirpath.parent / init_rescale_dirname
@@ -114,8 +146,8 @@ def batch_rescale_imgs(input_dirpath):
         img_file = AICSImage(imgpath, reader=OmeTiffReader)
         img = img_file.data
         ome_metadata = img_file.ome_metadata
-        img_vis, scaling_fact = rescale_img(img, target_perc_grayval=50, standardize_scaling=False,
-                                                            scaling_fact=scaling_fact, conv_to_8bit=False)
+        img_vis, scaling_fact = rescale_img(img, target_perc_grayval=target_perc_grayval, standardize_scaling=False,
+                                            scaling_fact=scaling_fact, conv_to_8bit=False)
         OmeTiffWriter.save(img_vis, Path(vis_dirpath) / imgpath.name, ome_xml=ome_metadata)
 
         img_rescale_params = pd.DataFrame({'Image name': [imgpath.name]})

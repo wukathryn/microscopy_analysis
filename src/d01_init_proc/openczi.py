@@ -46,6 +46,7 @@ def update_ome_timestamps(metadata, ome_metadata):
 def convert_czi_to_tif(imgpath, raw_tif_dirpath):
     img = AICSImage(imgpath)
     n = 0 # cellID counter if there is no scene data
+
     for i, scene in enumerate(img.scenes):
         if len(img.scenes) > 1:
             if scene is None:
@@ -55,11 +56,13 @@ def convert_czi_to_tif(imgpath, raw_tif_dirpath):
             img.set_scene(scene)
         else:
             imgsavename = f'{Path(imgpath).name.split(".")[0]}.ome.tif'
+
         img_savepath = Path(raw_tif_dirpath) / imgsavename
 
-        ome_metadata = get_ome_metadata(img)
-
-        OmeTiffWriter.save(img.data, img_savepath, ome_xml=ome_metadata)
+        # Save file if it hasn't already been saved
+        if not img_savepath.is_file():
+            ome_metadata = get_ome_metadata(img)
+            OmeTiffWriter.save(img.data, img_savepath, ome_xml=ome_metadata)
 
 def move_files_into_CZI_dir(exp_dir, proc_dir):
     CZI_dirpath = Path(proc_dir) / dn.CZI_dirname
@@ -75,11 +78,13 @@ def batch_convert_czi_to_tif(exp_dir):
     proc_dir = exp_dir / dn.proc_dirname
     CZI_dirpath = move_files_into_CZI_dir(exp_dir, proc_dir)
 
+    imgpaths = [path for path in CZI_dirpath.glob('*.czi')]
+    imgpaths.sort()
+    imgpaths_total = len(imgpaths)
+
     raw_ometif_dirpath = proc_dir / dn.raw_ometif_dirname
     raw_ometif_dirpath.mkdir(parents=True, exist_ok=True)
 
-    imgpaths = [path for path in CZI_dirpath.glob('*.czi')]
-    imgpaths.sort()
     num_imgs = len(imgpaths)
 
     if len(imgpaths)==0:
