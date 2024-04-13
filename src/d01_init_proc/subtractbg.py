@@ -7,11 +7,10 @@ from skimage.filters import threshold_otsu
 from scipy.ndimage import gaussian_filter
 import pandas as pd
 from src.d00_utils.dirnames import bg_sub_dirname, bg_sub_fig_dirname
-from src.d00_utils.utilities import construct_ome_metadata
+from src.d00_utils import utilities
 from . import vis_and_rescale
 from datetime import datetime
-#for testing
-import matplotlib.pyplot as plt
+
 
 def crop_black_borders(img):
     '''
@@ -95,7 +94,9 @@ def subtract_bg(imgpath, params_list, bs_thresh_d, ch_to_process=None, index=Non
     imgpath = Path(imgpath)
 
     # Make a folder for bg subtracted images if they don't exist yet
-    bg_sub_dirpath = imgpath.parent.parent / bg_sub_dirname
+    proc_dirpath = utilities.get_proc_dirpath(imgpath)
+    ch_str = ''.join(str(ch) for ch in ch_to_process)
+    bg_sub_dirpath = proc_dirpath / bg_sub_dirname / 'initial' / (imgpath.parent.name + '_bgsbch' + ch_str + '_init')
     bg_sub_fig_dirpath = bg_sub_dirpath / bg_sub_fig_dirname
     bg_sub_fig_dirpath.mkdir(parents=True, exist_ok=True)
 
@@ -147,7 +148,7 @@ def subtract_bg(imgpath, params_list, bs_thresh_d, ch_to_process=None, index=Non
         for i, ch in enumerate(ch_to_process):
             bg_sb_img[:, ch, :, :, :] = bg_sb_chsubset[:, i, :, :, :]
         bgsub_imgname = f'{basename}_{bgsub_time}_p{p}'
-        bs_ome_metadata = construct_ome_metadata(bg_sb_img, img_file.physical_pixel_sizes)
+        bs_ome_metadata = utilities.construct_ome_metadata(bg_sb_img, img_file.physical_pixel_sizes)
         OmeTiffWriter.save(bg_sb_img, bg_sub_dirpath / (bgsub_imgname + '.ome.tif'), ome_xml=bs_ome_metadata)
 
         fig = vis_and_rescale.generate_subtractbg_fig(img_chsubset, bg_sb_chsubset, bgsub_imgname, params,
@@ -196,7 +197,10 @@ def batch_subtract_bg(input_dirpath, params_list, ch_to_process, subset=None, ta
     # Get input dirpath, create a directory for bg subtracted images
     input_dirpath = Path(input_dirpath)
     assert input_dirpath.exists(), "Please input a valid directory path"
-    bg_sub_dirpath = input_dirpath.parent / bg_sub_dirname
+
+    proc_dirpath = utilities.get_proc_dirpath(input_dirpath)
+    ch_str = ''.join(str(ch) for ch in ch_to_process)
+    bg_sub_dirpath = proc_dirpath / bg_sub_dirname / 'initial' / (input_dirpath.name + '_bgsbch' + ch_str + '_init')
     bg_sub_fig_dirpath = bg_sub_dirpath / bg_sub_fig_dirname
     bg_sub_fig_dirpath.mkdir(parents=True, exist_ok=True)
 

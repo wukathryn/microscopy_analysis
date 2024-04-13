@@ -18,11 +18,11 @@ parser.add_argument('-d', '--exp_dir', required=True, help="directory containing
 
 
 def get_ome_metadata(img):
-    ome_metadata = OmeTiffWriter.build_ome([img.data.shape], [np.dtype(img.dtype)], channel_names=[img.channel_names],
+    ome_metadata = OmeTiffWriter.build_ome([img.shape], [np.dtype(img.dtype)], channel_names=[img.channel_names],
                                            physical_pixel_sizes=[img.physical_pixel_sizes])
 
-    if img.dims.T > 1:
-        ome_metadata = update_ome_timestamps(img.metadata, ome_metadata)
+    # if img.dims.T > 1:
+    #     ome_metadata = update_ome_timestamps(img.metadata, ome_metadata)
     return ome_metadata
 
 
@@ -59,10 +59,8 @@ def convert_czi_to_tif(imgpath, raw_tif_dirpath):
 
         img_savepath = Path(raw_tif_dirpath) / imgsavename
 
-        # Save file if it hasn't already been saved
-        if not img_savepath.is_file():
-            ome_metadata = get_ome_metadata(img)
-            OmeTiffWriter.save(img.data, img_savepath, ome_xml=ome_metadata)
+        ome_metadata = get_ome_metadata(img)
+        OmeTiffWriter.save(img.data, img_savepath, ome_xml=ome_metadata)
 
 def move_files_into_CZI_dir(exp_dir, proc_dir):
     CZI_dirpath = Path(proc_dir) / dn.CZI_dirname

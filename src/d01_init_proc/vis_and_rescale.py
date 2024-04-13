@@ -66,7 +66,7 @@ def generate_subtractbg_fig(orig_img, bgsb_img, bgsub_imgname, params, target_pe
 
     for c in range(size_c):
         subfig = subfigs[0, c]
-        subfig.suptitle(f'Channel {c + 1}')
+        #subfig.suptitle(f'Channel {c + 1}')
 
         subfigs_imgtype = subfig.subfigures(1, num_imgs)
         subfigs_imgtype[0].suptitle('Rescaled orig image')

@@ -5,7 +5,7 @@ from aicsimageio.writers import OmeTiffWriter
 import numpy as np
 from numpy.fft import fft2, ifft2
 import pandas as pd
-from src.d00_utils.utilities import crop_black_borders, construct_ome_metadata, extract_img_info
+from src.d00_utils.utilities import crop_black_borders, construct_ome_metadata, extract_img_info, create_ch_subset
 from src.d01_init_proc import vis_and_rescale
 from src.d00_utils.dirnames import proc_dirname, raw_ometif_dirname, ch_aligned_dirname
 import argparse
@@ -159,18 +159,17 @@ def align_2imgs(imgpath1, imgpath2, aligned_dirpath, img1_ch_align=0, img2_ch_al
 
     img1_slice, img2_slice = preprocess_for_alignment(img1, img2, img1_ch_align, img2_ch_align)
 
-    # Get translation coordinates for alignment
+    # Align images
     [t0, t1] = get_translation_coords(img1_slice, img2_slice)
-
     aligned_stack = align_and_stack(img1, img2, t0, t1)
-    ome_metadata = construct_ome_metadata(aligned_stack, img_file1.physical_pixel_sizes)
-
-    aligned_pathname = f'{Path(imgpath1).name.split(".")[0]}_aligned.ome.tif'
-    aligned_path = Path(aligned_dirpath) / aligned_pathname
 
     # Save aligned stack with all image channels
+    ome_metadata = construct_ome_metadata(aligned_stack, img_file1.physical_pixel_sizes)
+    aligned_pathname = f'{Path(imgpath1).name.split(".")[0]}_aligned.ome.tif'
+    aligned_path = Path(aligned_dirpath) / aligned_pathname
     OmeTiffWriter.save(aligned_stack, aligned_path, ome_xml=ome_metadata)
 
+    # Add to align dataframe
     align_df = pd.DataFrame({'img1': [Path(imgpath1).name], 'img2': [Path(imgpath2).name], 't0': [t0], 't1': [t1]})
 
     if img1_ch_subset is not None or img2_ch_subset is not None:
@@ -186,21 +185,11 @@ def align_2imgs(imgpath1, imgpath2, aligned_dirpath, img1_ch_align=0, img2_ch_al
         stack_img2_ch_subset = img2_ch_subset + img1_sizeC
         stack_ch_subset = np.concatenate([img1_ch_subset, stack_img2_ch_subset])
 
-        chsubset, chsubset_path = create_ch_subset(aligned_stack, aligned_path, stack_ch_subset)
-        subset_ome_metadata = construct_ome_metadata(chsubset, img_file1.physical_pixel_sizes)
-        OmeTiffWriter.save(chsubset, chsubset_path, ome_xml=subset_ome_metadata)
+        create_ch_subset(stack_ch_subset, aligned_path,
+                         img=aligned_stack, pixelsizes=img_file1.physical_pixel_sizes, output_dir=None)
 
     return align_df
 
-def create_ch_subset(aligned_stack, aligned_path, ch_subset):
-    chsubset_dirpath = aligned_path.parent.parent / (aligned_path.parent.name + '_chsubset')
-    chsubset_dirpath.mkdir(parents=True, exist_ok=True)
-    chsubset_path = chsubset_dirpath / aligned_path.name
-
-    img_chs = [aligned_stack[:, ch, np.newaxis, :, :, :] for ch in ch_subset]
-    chsubset = np.concatenate(img_chs, axis=1)
-
-    return chsubset, chsubset_path
 
 def batch_align_2imgs(aligndir, img1_ch_align=0, img2_ch_align=0, img1_ch_subset=None, img2_ch_subset=None):
     # get directories of images to align
@@ -224,10 +213,11 @@ def batch_align_2imgs(aligndir, img1_ch_align=0, img2_ch_align=0, img1_ch_subset
     imgnames2 = [path.name for path in Path(dir2_raw_dirpath).glob('*.ome.tif')]
     imgnames2.sort()
 
-    # Check for and exclude already aligned images
     multiexp_dirpath = aligndir.parent
     aligned_dirpath = multiexp_dirpath / aligned_dirname / f'{dirs[0].name}_and_{dirs[1].name}_aligned'\
                       / proc_dirname / raw_ometif_dirname
+
+    # Check for and exclude already aligned images
     if aligned_dirpath.exists():
 
         # Extracts the img1 directory name from the aligned file (relies on the naming convention staying the same)
@@ -251,6 +241,7 @@ def batch_align_2imgs(aligndir, img1_ch_align=0, img2_ch_align=0, img1_ch_subset
 
     else:
         aligned_dirpath.mkdir(parents=True, exist_ok=True)
+        align_df = pd.DataFrame()
 
     # Save info about images in dataframes
     imgs1_df = pd.DataFrame()
@@ -299,7 +290,7 @@ def batch_align_2imgs(aligndir, img1_ch_align=0, img2_ch_align=0, img1_ch_subset
 
 def multiexp_align(multiexp_dir, img1_ch_align=0, img2_ch_align=0, img1_ch_subset=None, img2_ch_subset=None):
     # Finds directories within the multiexperiment directory
-    # (excluding the directories that contain already aligned or
+    # (excluding the directories that contain     already aligned or
     # original, unaligned images corresponding to already aligned images)
     aligndirs = [aligndir for aligndir in multiexp_dir.iterdir() if (aligndir.is_dir() &
                                                                      (aligndir.name not in [orig_unaligned_dirname,

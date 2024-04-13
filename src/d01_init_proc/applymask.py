@@ -17,7 +17,7 @@ import src.d00_utils.utilities as utils
 tp = -1
 z = 0
 
-def apply_mask_files(input_dirpath, mask_subdirname, add_cellmask=False, cell_ch=None):
+def apply_mask_files(input_dirpath, mask_subdirname, add_cellmask=False, cell_ch=None, subset=None):
     '''
     Masks ome-tif images using polygon ROIs and saves these into a new directory
 
@@ -49,19 +49,24 @@ def apply_mask_files(input_dirpath, mask_subdirname, add_cellmask=False, cell_ch
 
 
     imgpaths = [path for path in Path(input_dirpath).glob('*.ome.tif')]
+    imgpaths.sort()
+
+    if subset is None:
+        subset = list(np.arange(len(imgpaths)))
+    else:
+        imgpaths = [imgpaths[i] for i in subset]
+
     print(f'Applying masks to {len(imgpaths)} images')
 
-    for imgpath in imgpaths:
-
-        #TODO: delete
-        idx = imgpath.name.index('aligned') + len('aligned')
-        basename = imgpath.name[:idx]
+    for i, imgpath in enumerate(imgpaths):
 
         # Identifies masks that share the same name as the image
-        #basename = imgpath.name.split('.ome.tif')[0]
+        basename = imgpath.name.split('.ome.tif')[0]
+
         maskpaths = [path for path in Path(masks_dirpath).glob(f'*{basename}*')]
 
-        print(f"{len(maskpaths)} mask file(s) found for {basename}")
+        index = subset[i]
+        print(f"{len(maskpaths)} mask file(s) found for {basename} (index: {index})")
 
         if len(maskpaths) > 0:
             img_data = AICSImage(imgpath, reader=OmeTiffReader)

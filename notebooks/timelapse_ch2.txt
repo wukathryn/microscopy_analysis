@@ -1,0 +1,7 @@
+Unique wellIDs: ['CE030-20x-01' 'CE030-20x-A1.ome.tif' 'CE030-20x-A2.ome.tif'
+ 'CE030-20x-A3.ome.tif' 'CE030-20x-B1.ome.tif']
+8 randomly selected training imgs:
+CE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP14-A1.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP19-A1.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP69-A2.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP71-A2.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP36-A3.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP31-A3.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP53-B1.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP48-B1.ome.tifUnique wellIDs: ['CE030-20x-01' 'CE030-20x-A1.ome.tif' 'CE030-20x-A2.ome.tif'
+ 'CE030-20x-A3.ome.tif' 'CE030-20x-B1.ome.tif']
+
+8 randomly selected training imgs:CE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP1-A1.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP7-A1.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP71-A2.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP64-A2.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP41-A3.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP38-A3.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP45-B1.ome.tifCE030_20x_actindrugs_timelapse-01-Time Alignment-01_scP51-B1.ome.tif

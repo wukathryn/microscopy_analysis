@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from aicsimageio import AICSImage
+from aicsimageio.readers.ome_tiff_reader import OmeTiffReader
 from aicsimageio.writers import OmeTiffWriter
 from src.d00_utils.dirnames import proc_dirname
 
@@ -98,3 +100,22 @@ def new_or_overwrite_ok(filepath):
         if overwrite_yn.lower() == 'n':
             return False
     return True
+
+def create_ch_subset(ch_subset, imgpath, img=None, pixelsizes=None, output_dir=None):
+    if img is None:
+        img_file = AICSImage(imgpath, reader=OmeTiffReader)
+        img = img_file.data
+        pixelsizes = img_file.physical_pixel_sizes
+
+    img_chs = [img[:, ch, np.newaxis, :, :, :] for ch in ch_subset]
+    img_chsubset = np.concatenate(img_chs, axis=1)
+
+    if output_dir is None:
+        chstr = ''.join(str(ch) for ch in ch_subset)
+        output_dir = imgpath.parent.parent / (imgpath.parent.name + '_chsubset' + chstr)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    subset_ome_metadata = construct_ome_metadata(img_chsubset, pixelsizes)
+    OmeTiffWriter.save(img_chsubset, output_dir / imgpath.name, ome_xml=subset_ome_metadata)
+
+    return img_chsubset
